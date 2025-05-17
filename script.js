@@ -220,16 +220,22 @@ document.addEventListener('DOMContentLoaded', function () {
                 <div class="error-subtext">No runner found with: ${searchTerm}</div>
             `;
         }
-    }
+    }   
 
     // Find and sort runners that match the search term
     function findMatchingRunners(searchTerm) {
+        const searchTermLower = searchTerm.toLowerCase();
+        
         // Get all matching runners
         const matches = runners.filter(runner => 
             // Match by number (starts with)
             runner.race_no.toString().startsWith(searchTerm) || 
-            // Match by name (contains, case insensitive)
-            (isNaN(searchTerm) && runner.full_name.toLowerCase().includes(searchTerm.toLowerCase()))
+            // Match by name, club, or category (contains, case insensitive)
+            (isNaN(searchTerm) && (
+                runner.full_name.toLowerCase().includes(searchTermLower) ||
+                (runner.club && runner.club.toLowerCase().includes(searchTermLower)) ||
+                (runner.category && runner.category.toLowerCase().includes(searchTermLower))
+            ))
         );
         
         // Sort matches: exact matches first, then numeric or alphabetical
@@ -309,8 +315,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 row.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
         });
-    }
-
+    }    
+    
     function renderTable() {
         // Clear the table body
         runnersTableBody.innerHTML = '';
@@ -343,6 +349,22 @@ document.addEventListener('DOMContentLoaded', function () {
         } else {
             // Otherwise use the selected sort column
             sortedRunners = sortRunners(filteredRunners, sortColumn, sortDirection);
+        }
+
+        // Show "+x more" info for any filter if total count > 1 and there's a filter active
+        if (currentFilter && filteredRunners.length > 1) {
+            // If we're searching for something specific, show total matches
+            if (!runnerInfo.querySelector('.additional-matches')) {
+                const additionalMatches = document.createElement('div');
+                additionalMatches.className = 'additional-matches';
+                additionalMatches.textContent = `+${filteredRunners.length - 1} more`;
+                runnerInfo.appendChild(additionalMatches);
+                runnerInfo.classList.add('multi-match');
+            }
+        } else if (runnerInfo.querySelector('.additional-matches')) {
+            // Remove the counter if no longer needed
+            runnerInfo.querySelector('.additional-matches').remove();
+            runnerInfo.classList.remove('multi-match');
         }
 
         // Render the rows
@@ -455,19 +477,21 @@ document.addEventListener('DOMContentLoaded', function () {
         runnerNumberInput.classList.remove('ready-for-reset');
         currentInputDisplay.classList.remove('input-ready-for-reset');
         document.body.classList.remove('timeout-elapsed');
-    }
-
+    }    
+    
     // Helper function to filter runners based on search term
     function filterRunners(runners, filterTerm) {
         if (!filterTerm || filterTerm === '') return runners;
+        
+        const filterTermLower = filterTerm.toLowerCase();
         
         return runners.filter(runner => 
             // Match by race number (starts with)
             runner.race_no.toString().startsWith(filterTerm) ||
             // Match by name, club, or category (contains, case insensitive)
-            (runner.full_name && runner.full_name.toLowerCase().includes(filterTerm)) ||
-            (runner.club && runner.club.toLowerCase().includes(filterTerm)) ||
-            (runner.category && runner.category.toLowerCase().includes(filterTerm))
+            (runner.full_name && runner.full_name.toLowerCase().includes(filterTermLower)) ||
+            (runner.club && runner.club.toLowerCase().includes(filterTermLower)) ||
+            (runner.category && runner.category.toLowerCase().includes(filterTermLower))
         );
     }
 });
