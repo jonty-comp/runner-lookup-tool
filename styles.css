@@ -32,7 +32,7 @@ body {
 
 /* Background color transition when timeout elapsed */
 body.timeout-elapsed .top-section {
-    background-color: #e6ffe6; /* Vivid green background to indicate reset ready */
+    background-color: #5aca5a; /* Vivid green background to indicate reset ready */
 }
 
 body.timeout-elapsed .runner-data {
