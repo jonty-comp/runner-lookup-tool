@@ -38,9 +38,8 @@ document.addEventListener('DOMContentLoaded', function () {
     function setupEventListeners() {
         // Runner lookup
         runnerNumberInput.addEventListener('input', function (e) {
-            // Clear any existing lookup debounce timer
+            // Clear any existing timers
             clearTimeout(lookupDebounceTimer);
-            // Clear any existing reset timer when the user types
             clearTimeout(resetInputTimer);
 
             // Remove timeout-elapsed class when user types
@@ -48,44 +47,25 @@ document.addEventListener('DOMContentLoaded', function () {
 
             // Create a new timer to reset the input field after timeout period
             resetInputTimer = setTimeout(() => {
-                // We don't clear the field here, just set a flag to clear on next input
-                runnerNumberInput.dataset.shouldClear = 'true';
-                // Add a visual indicator class to show the input is ready for reset
-                runnerNumberInput.classList.add('ready-for-reset');
-
-                // Add timeout-elapsed class to body to change background color
-                document.body.classList.add('timeout-elapsed');
-
-                // Update the input display to show it's ready for reset
-                if (currentInputDisplay && runnerNumberInput.value.trim() !== '') {
-                    currentInputDisplay.classList.add('input-ready-for-reset');
-                }
+                setInputReadyForReset();
                 
                 // If there are any matches shown currently, update the styling
                 if (document.querySelector('.multi-match')) {
-                    // Re-run the lookup to update the text styling
                     handleRunnerLookup();
                 }
             }, resetInputTimeout);
 
             // If the shouldClear flag is set and this is a new input, clear the field first
             if (runnerNumberInput.dataset.shouldClear === 'true' && e.inputType === 'insertText') {
-                // Get the latest character that was typed
+                // Clear the input field but keep the latest character
                 const latestChar = e.data;
-
-                // Clear the input field
                 runnerNumberInput.value = latestChar;
 
-                // Reset the flag
-                runnerNumberInput.dataset.shouldClear = 'false';
-
-                // Remove the visual indicators
-                runnerNumberInput.classList.remove('ready-for-reset');
-                currentInputDisplay.classList.remove('input-ready-for-reset');
-                document.body.classList.remove('timeout-elapsed');
+                // Reset input state
+                resetInputState();
             }
 
-            // Create a new timer with a very short delay (50ms) for lookup
+            // Create a new timer with a short delay for lookup
             lookupDebounceTimer = setTimeout(() => {
                 handleRunnerLookup();
                 // Update the displayed table based on the search text
@@ -112,13 +92,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 // Check if we should clear the input first (after timeout)
                 if (runnerNumberInput.dataset.shouldClear === 'true') {
                     runnerNumberInput.value = key;
-                    runnerNumberInput.dataset.shouldClear = 'false';
-                    runnerNumberInput.classList.remove('ready-for-reset');
-                    document.body.classList.remove('timeout-elapsed');
+                    resetInputState();
                 } else {
-                    // Simulate typing the character (we don't trigger the input event directly)
-                    const currentValue = runnerNumberInput.value;
-                    runnerNumberInput.value = currentValue + key;
+                    // Simulate typing the character
+                    runnerNumberInput.value += key;
                 }
 
                 // Manually trigger the input event
@@ -140,9 +117,7 @@ document.addEventListener('DOMContentLoaded', function () {
             } else if (key === 'Escape') {
                 // Clear the input on escape
                 runnerNumberInput.value = '';
-                runnerNumberInput.dataset.shouldClear = 'false';
-                runnerNumberInput.classList.remove('ready-for-reset');
-                document.body.classList.remove('timeout-elapsed');
+                resetInputState();
 
                 const inputEvent = new Event('input', { bubbles: true });
                 runnerNumberInput.dispatchEvent(inputEvent);
@@ -221,8 +196,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function handleRunnerLookup() {
         const searchTerm = runnerNumberInput.value.trim();
+        
+        // Show welcome message if search is empty
         if (searchTerm === '') {
-            // Clear the displayed runner info if search is empty
             runnerInfo.innerHTML = `
                 <div class="welcome-message">Enter a number</div>
                 <div class="welcome-subtext">or name to see runner details</div>
@@ -230,88 +206,73 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        // Get all matching runners
-        const matchingRunners = runners.filter(runner => {
-            // Match by number (starts with)
-            if (runner.race_no.toString().startsWith(searchTerm)) {
-                return true;
-            }
+        // Find matching runners
+        const matchingRunners = findMatchingRunners(searchTerm);
 
-            // Match by name (contains, case insensitive)
-            if (isNaN(searchTerm) && runner.full_name.toLowerCase().includes(searchTerm.toLowerCase())) {
-                return true;
-            }
-
-            return false;
-        });
-
-        // Always show the first matching result, if available
         if (matchingRunners.length > 0) {
-            // Sort by exact number match first, then by partial number match, then by name
-            matchingRunners.sort((a, b) => {
-                // Exact number match gets highest priority
-                if (a.race_no.toString() === searchTerm) return -1;
-                if (b.race_no.toString() === searchTerm) return 1;
-                
-                // Otherwise sort numerically for numeric searches
-                if (!isNaN(searchTerm)) {
-                    return a.race_no - b.race_no;
-                }
-                
-                // For text searches, sort alphabetically
-                return a.full_name.localeCompare(b.full_name);
-            });
-
-            const foundRunner = matchingRunners[0];
-            // Display runner information in the info section
-            displayRunnerInfo(foundRunner, matchingRunners.length > 1);
-
-            // Highlight the runner in the table
-            highlightRunner(foundRunner);
-            
-            // Add multi-match class if there are multiple matches
-            if (matchingRunners.length > 1) {
-                runnerInfo.classList.add('multi-match');
-            } else {
-                runnerInfo.classList.remove('multi-match');
-            }
-
-              // If there is exactly one match, reset the input timer immediately
-            // This means we've found the exact runner and can be ready for the next input
-            if (matchingRunners.length === 1) {
-                // Mark the input as ready to clear on next keystroke
-                runnerNumberInput.dataset.shouldClear = 'true';
-                runnerNumberInput.classList.add('ready-for-reset');
-                document.body.classList.add('timeout-elapsed');
-                
-                // Update the input display to show it's ready for reset
-                if (currentInputDisplay) {
-                    currentInputDisplay.classList.add('input-ready-for-reset');
-                }
-                
-                // Clear any existing reset timer
-                clearTimeout(resetInputTimer);
-            }            
-            // If the user has completed their input (timeout has elapsed)
-            // then confirm the selection even for multiple matches
-            else if (runnerNumberInput.dataset.shouldClear === 'true') {
-                // Re-display the runner info to update text styling
-                displayRunnerInfo(foundRunner, matchingRunners.length > 1);
-            }
-              
-            // Add count of additional matches if there are more
-            if (matchingRunners.length > 1) {
-                const additionalMatches = document.createElement('div');
-                additionalMatches.className = 'additional-matches';
-                additionalMatches.textContent = `+${matchingRunners.length - 1} more`;
-                runnerInfo.appendChild(additionalMatches);
-            }
+            // Update UI with the top match and match count
+            updateUIWithMatchResult(matchingRunners[0], matchingRunners.length, searchTerm);
         } else {
+            // No matches found
             runnerInfo.classList.remove('multi-match');
             runnerInfo.innerHTML = `
                 <div class="error-text">No Runner Found</div>
                 <div class="error-subtext">No runner found with: ${searchTerm}</div>
             `;
+        }
+    }
+
+    // Find and sort runners that match the search term
+    function findMatchingRunners(searchTerm) {
+        // Get all matching runners
+        const matches = runners.filter(runner => 
+            // Match by number (starts with)
+            runner.race_no.toString().startsWith(searchTerm) || 
+            // Match by name (contains, case insensitive)
+            (isNaN(searchTerm) && runner.full_name.toLowerCase().includes(searchTerm.toLowerCase()))
+        );
+        
+        // Sort matches: exact matches first, then numeric or alphabetical
+        return matches.sort((a, b) => {
+            // Exact number match gets highest priority
+            if (a.race_no.toString() === searchTerm) return -1;
+            if (b.race_no.toString() === searchTerm) return 1;
+            
+            // Otherwise sort numerically for numeric searches
+            if (!isNaN(searchTerm)) {
+                return a.race_no - b.race_no;
+            }
+            
+            // For text searches, sort alphabetically
+            return a.full_name.localeCompare(b.full_name);
+        });
+    }
+
+    // Helper to update UI with runner match result
+    function updateUIWithMatchResult(runner, totalMatches, searchTerm) {
+        const isMultiMatch = totalMatches > 1;
+        
+        // Display runner information
+        displayRunnerInfo(runner, isMultiMatch);
+        highlightRunner(runner);
+        
+        // Update classes based on match count
+        runnerInfo.classList.toggle('multi-match', isMultiMatch);
+        
+        // Set input state based on match count
+        if (totalMatches === 1) {
+            setInputReadyForReset();
+        } else if (runnerNumberInput.dataset.shouldClear === 'true') {
+            // If timeout elapsed with multiple matches, update styling
+            displayRunnerInfo(runner, true);
+        }
+        
+        // Add count of additional matches if there are more
+        if (isMultiMatch) {
+            const additionalMatches = document.createElement('div');
+            additionalMatches.className = 'additional-matches';
+            additionalMatches.textContent = `+${totalMatches - 1} more`;
+            runnerInfo.appendChild(additionalMatches);
         }
     }
 
@@ -331,7 +292,7 @@ document.addEventListener('DOMContentLoaded', function () {
         runnerInfo.innerHTML = `
             <div class="runner-name ${textClass}">#${runner.race_no} - ${runner.full_name}</div>
             <div class="runner-age-category ${textClass}">${runner.age || 'N/A'} &middot; ${runner.category || 'N/A'}</div>
-            <div class="runner-club ${textClass}">${runner.club || 'N/A'}</div>
+            <div class="runner-club ${textClass}">${clubName}</div>
         `;
     }
 
@@ -357,21 +318,7 @@ document.addEventListener('DOMContentLoaded', function () {
         runnersTableBody.innerHTML = '';
 
         // Filter runners based on the current filter
-        const filteredRunners = runners.filter(runner => {
-            if (!currentFilter || currentFilter === '') return true;
-
-            // Match by race number (starts with - for consistent behavior with lookup)
-            if (runner.race_no.toString().startsWith(currentFilter)) {
-                return true;
-            }
-
-            // Check various text fields for matches (contains)
-            return (
-                (runner.full_name && runner.full_name.toLowerCase().includes(currentFilter)) ||
-                (runner.club && runner.club.toLowerCase().includes(currentFilter)) ||
-                (runner.category && runner.category.toLowerCase().includes(currentFilter))
-            );
-        });
+        const filteredRunners = filterRunners(runners, currentFilter);
 
         // Show message if no runners match the filter
         if (filteredRunners.length === 0) {
@@ -388,7 +335,7 @@ document.addEventListener('DOMContentLoaded', function () {
         // If filtering by a number, use the logical sort for numbers starting with that digit
         if (currentFilter && !isNaN(currentFilter)) {
             // First sort numerically by bib number
-            sortedRunners = [...filteredRunners].sort((a, b) => a.number - b.number);
+            sortedRunners = [...filteredRunners].sort((a, b) => a.race_no - b.race_no);
             // Then move exact matches to the top
             sortedRunners.sort((a, b) => {
                 if (a.race_no.toString() === currentFilter) return -1;
@@ -401,25 +348,28 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         // Render the rows
-        sortedRunners.forEach(runner => {
-            const row = document.createElement('tr');
-            row.dataset.runnerId = runner.race_no;
-            row.innerHTML = `
-                <td>${runner.race_no}</td>
-                <td>${runner.full_name}</td>
-                <td>${runner.age || 'N/A'}</td>
-                <td>${runner.category || 'N/A'}</td>
-                <td>${runner.club || 'N/A'}</td>
-            `;
+        sortedRunners.forEach(createTableRow);
+    }
 
-            // Add click event to the row
-            row.addEventListener('click', () => {
-                runnerNumberInput.value = runner.race_no;
-                handleRunnerLookup();
-            });
+    // Create a table row for a runner
+    function createTableRow(runner) {
+        const row = document.createElement('tr');
+        row.dataset.runnerId = runner.race_no;
+        row.innerHTML = `
+            <td>${runner.race_no}</td>
+            <td>${runner.full_name}</td>
+            <td>${runner.age || 'N/A'}</td>
+            <td>${runner.category || 'N/A'}</td>
+            <td>${runner.club || 'N/A'}</td>
+        `;
 
-            runnersTableBody.appendChild(row);
+        // Add click event to the row
+        row.addEventListener('click', () => {
+            runnerNumberInput.value = runner.race_no;
+            handleRunnerLookup();
         });
+
+        runnersTableBody.appendChild(row);
     }
 
     function sortRunners(runners, column, direction) {
@@ -485,5 +435,41 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             }
         }
+    }
+
+    // Helper function to set the input as ready for reset
+    function setInputReadyForReset() {
+        runnerNumberInput.dataset.shouldClear = 'true';
+        runnerNumberInput.classList.add('ready-for-reset');
+        document.body.classList.add('timeout-elapsed');
+        
+        if (currentInputDisplay) {
+            currentInputDisplay.classList.add('input-ready-for-reset');
+        }
+        
+        // Clear any existing reset timer
+        clearTimeout(resetInputTimer);
+    }
+    
+    // Helper to clear input state
+    function resetInputState() {
+        runnerNumberInput.dataset.shouldClear = 'false';
+        runnerNumberInput.classList.remove('ready-for-reset');
+        currentInputDisplay.classList.remove('input-ready-for-reset');
+        document.body.classList.remove('timeout-elapsed');
+    }
+
+    // Helper function to filter runners based on search term
+    function filterRunners(runners, filterTerm) {
+        if (!filterTerm || filterTerm === '') return runners;
+        
+        return runners.filter(runner => 
+            // Match by race number (starts with)
+            runner.race_no.toString().startsWith(filterTerm) ||
+            // Match by name, club, or category (contains, case insensitive)
+            (runner.full_name && runner.full_name.toLowerCase().includes(filterTerm)) ||
+            (runner.club && runner.club.toLowerCase().includes(filterTerm)) ||
+            (runner.category && runner.category.toLowerCase().includes(filterTerm))
+        );
     }
 });
