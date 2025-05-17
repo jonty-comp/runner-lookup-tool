@@ -90,6 +90,12 @@ body.timeout-elapsed .runner-data {
     box-shadow: 0 4px 8px rgba(149, 165, 166, 0.3);
 }
 
+/* Override multi-match styling when timeout has elapsed */
+body.timeout-elapsed .runner-data.multi-match {
+    background-color: white;
+    box-shadow: 0 4px 8px rgba(46, 204, 113, 0.4);
+}
+
 .current-input {
     position: absolute;
     top: 10px;

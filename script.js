@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded', function () {
     let currentFilter = '';
     let lookupDebounceTimer = null;
     let resetInputTimer = null;
-    const resetInputTimeout = 3000; // 3 seconds timeout for reset
+    const resetInputTimeout = 1500; // 1.5 seconds timeout for reset
 
     // Initialize the app
     init();
@@ -59,6 +59,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 // Update the input display to show it's ready for reset
                 if (currentInputDisplay && runnerNumberInput.value.trim() !== '') {
                     currentInputDisplay.classList.add('input-ready-for-reset');
+                }
+                
+                // If there are any matches shown currently, update the styling
+                if (document.querySelector('.multi-match')) {
+                    // Re-run the lookup to update the text styling
+                    handleRunnerLookup();
                 }
             }, resetInputTimeout);
 
@@ -269,8 +275,8 @@ document.addEventListener('DOMContentLoaded', function () {
             } else {
                 runnerInfo.classList.remove('multi-match');
             }
-            
-            // If there is exactly one match, reset the input timer immediately
+
+              // If there is exactly one match, reset the input timer immediately
             // This means we've found the exact runner and can be ready for the next input
             if (matchingRunners.length === 1) {
                 // Mark the input as ready to clear on next keystroke
@@ -285,6 +291,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 
                 // Clear any existing reset timer
                 clearTimeout(resetInputTimer);
+            }            
+            // If the user has completed their input (timeout has elapsed)
+            // then confirm the selection even for multiple matches
+            else if (runnerNumberInput.dataset.shouldClear === 'true') {
+                // Re-display the runner info to update text styling
+                displayRunnerInfo(foundRunner, matchingRunners.length > 1);
             }
               
             // Add count of additional matches if there are more
@@ -310,8 +322,12 @@ document.addEventListener('DOMContentLoaded', function () {
             clubName = clubName.substring(0, 27) + '...';
         }
 
-        // Apply muted style if there are multiple matches
-        const textClass = isMultipleMatches ? 'muted-text' : 'normal-text';
+        // Apply normal text style if:
+        // 1. There's only one match, OR
+        // 2. The timeout has elapsed (input is ready for reset)
+        const isConfirmed = !isMultipleMatches || runnerNumberInput.dataset.shouldClear === 'true';
+        const textClass = isConfirmed ? 'normal-text' : 'muted-text';
+        
         runnerInfo.innerHTML = `
             <div class="runner-name ${textClass}">#${runner.race_no} - ${runner.full_name}</div>
             <div class="runner-age-category ${textClass}">${runner.age || 'N/A'} &middot; ${runner.category || 'N/A'}</div>
