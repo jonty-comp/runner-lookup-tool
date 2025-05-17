@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Race Announcer Tool</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div class="container">
+        <div class="top-section">
+            <div class="lookup-input">
+                <input type="text" id="runner-number" placeholder="Enter number/name..." autocomplete="off">
+            </div>
+            <div class="runner-display">
+                <div class="runner-data" id="runner-info">
+                    <div class="current-input" id="current-input-display"></div>
+                    <div class="welcome-message">Enter a number</div>
+                    <div class="welcome-subtext">or name to see runner details</div>
+                </div>
+            </div>
+        </div>
+        <div class="table-section">
+            <div id="table-container">
+                <div class="loader" id="loader"></div>
+                <div id="error-message"></div>
+                <table id="runners-table" style="display: none;">
+                    <thead>
+                        <tr>
+                            <th data-sort="race_no" class="sort-icon">Number</th>
+                            <th data-sort="full_name" class="sort-icon">Name</th>
+                            <th data-sort="age" class="sort-icon">Age</th>
+                            <th data-sort="category" class="sort-icon">Category</th>
+                            <th data-sort="club" class="sort-icon">Club</th>
+                        </tr>
+                    </thead>
+                    <tbody id="runners-table-body">
+                        <!-- Table content will be dynamically populated -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
