@@ -260,9 +260,7 @@ document.addEventListener('DOMContentLoaded', function () {
         runnerInfo.classList.toggle('multi-match', isMultiMatch);
         
         // Set input state based on match count
-        if (totalMatches === 1) {
-            setInputReadyForReset();
-        } else if (runnerNumberInput.dataset.shouldClear === 'true') {
+        if (runnerNumberInput.dataset.shouldClear === 'true') {
             // If timeout elapsed with multiple matches, update styling
             displayRunnerInfo(runner, true);
         }
